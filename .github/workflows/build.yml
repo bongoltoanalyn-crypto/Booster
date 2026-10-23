@@ -13,7 +13,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Extract and Build APK
+      - name: Extract and Fix Project
         run: |
           sudo apt-get update && sudo apt-get install -y p7zip-full
           ls -la
@@ -23,25 +23,29 @@ jobs:
           cd "$PROJECT_DIR"
           echo "sdk.dir=$ANDROID_HOME" > local.properties
           ls -la
+          echo "--- PATCHING JVM TARGET TO 17 ---"
+          find . -name "*.gradle" -o -name "*.gradle.kts" | xargs ls -la
+          # Patch Java version
+          sed -i "s/VERSION_1_8/VERSION_17/g" app/build.gradle || true
+          sed -i "s/VERSION_11/VERSION_17/g" app/build.gradle || true
+          sed -i "s/VERSION_1_8/VERSION_17/g" build.gradle || true
+          sed -i "s/JavaVersion.VERSION_1_8/JavaVersion.VERSION_17/g" app/build.gradle || true
+          sed -i "s/jvmTarget.*1.8/jvmTarget = '17'/g" app/build.gradle || true
+          sed -i "s/jvmTarget.*11/jvmTarget = '17'/g" app/build.gradle || true
+          sed -i 's/jvmTarget = "1.8"/jvmTarget = "17"/g' app/build.gradle || true
+          sed -i "s/JvmTarget.*1_8/JvmTarget.JVM_17/g" app/build.gradle || true
+          # Show patched file
+          cat app/build.gradle | grep -A 2 -B 2 "jvmTarget\|sourceCompat\|targetCompat\|VERSION" | head -n 100
+
+      - name: Build APK
+        run: |
+          PROJECT_DIR=$(find . -maxdepth 4 -name "settings.gradle*" | head -1 | xargs dirname)
+          cd "$PROJECT_DIR"
           gradle wrapper --gradle-version 8.10.2
           chmod +x ./gradlew
-          ./gradlew assembleDebug --stacktrace > full_log.txt 2>&1 || true
-          echo "========== TUNAY NA ERROR =========="
-          cat full_log.txt | grep -i -A 30 "What went\|FAILURE\|ERROR\|Could not\|not found" | head -n 150
-          echo "===================================="
-          echo "Full log saved for upload"
-
-      - name: Upload FULL LOG
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: full-build-log
-          path: |
-            **/full_log.txt
-            full_log.txt
+          ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: BossBooster-APK
