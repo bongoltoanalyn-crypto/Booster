@@ -13,26 +13,26 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v4
-
       - name: Extract and Build APK
         run: |
           sudo apt-get update && sudo apt-get install -y p7zip-full
-          find . -name "*.7z" -exec 7z x {} \; -o -print
+          echo "--- Before ---"
+          ls -la
+          echo "--- Extracting .7z ---"
+          for f in *.7z; do [ -e "$f" ] && 7z x "$f" -y; done
           ls -la
           PROJECT_DIR=$(find . -maxdepth 4 -type f -name "settings.gradle*" | head -1 | xargs dirname)
           echo "Project at: $PROJECT_DIR"
           cd "$PROJECT_DIR"
-          # Force Gradle 8.9 - ito yung kailangan ng project mo!
-          gradle wrapper --gradle-version 8.9
+          pwd
+          ls -la
+          # Upgrade to 8.10.2 - lagpas sa required 8.9
+          gradle wrapper --gradle-version 8.10.2
           chmod +x ./gradlew
           ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: BossBooster-APK
