@@ -16,20 +16,29 @@ jobs:
       - name: Extract and Build APK
         run: |
           sudo apt-get update && sudo apt-get install -y p7zip-full
-          echo "--- Before ---"
           ls -la
-          echo "--- Extracting .7z ---"
           for f in *.7z; do [ -e "$f" ] && 7z x "$f" -y; done
-          ls -la
-          PROJECT_DIR=$(find . -maxdepth 4 -type f -name "settings.gradle*" | head -1 | xargs dirname)
-          echo "Project at: $PROJECT_DIR"
+          PROJECT_DIR=$(find . -maxdepth 4 -name "settings.gradle*" | head -1 | xargs dirname)
+          echo "Project: $PROJECT_DIR"
           cd "$PROJECT_DIR"
-          pwd
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
           ls -la
-          # Upgrade to 8.10.2 - lagpas sa required 8.9
           gradle wrapper --gradle-version 8.10.2
           chmod +x ./gradlew
-          ./gradlew assembleDebug --stacktrace
+          ./gradlew assembleDebug --stacktrace > full_log.txt 2>&1 || true
+          echo "========== TUNAY NA ERROR =========="
+          cat full_log.txt | grep -i -A 30 "What went\|FAILURE\|ERROR\|Could not\|not found" | head -n 150
+          echo "===================================="
+          echo "Full log saved for upload"
+
+      - name: Upload FULL LOG
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-build-log
+          path: |
+            **/full_log.txt
+            full_log.txt
 
       - name: Upload APK
         if: always()
