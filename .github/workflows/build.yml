@@ -16,18 +16,30 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Generate Gradle Wrapper if missing
+      - name: Find and Build APK
         run: |
+          echo "--- Listing files ---"
+          ls -la
+          PROJECT_DIR=$(find . -type f -name "settings.gradle*" | head -1 | xargs dirname)
+          if [ -z "$PROJECT_DIR" ]; then
+            PROJECT_DIR=$(find . -type f -name "build.gradle*" | head -1 | xargs dirname)
+          fi
+          if [ -z "$PROJECT_DIR" ]; then
+            PROJECT_DIR="."
+          fi
+          echo "Found project at: $PROJECT_DIR"
+          cd $PROJECT_DIR
+          ls -la
           if [ ! -f "./gradlew" ]; then
             gradle wrapper --gradle-version 8.7
           fi
           chmod +x ./gradlew
-
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug
+          ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: BossBooster-APK
-          path: app/build/outputs/apk/debug/*.apk
+          path: |
+            **/app/build/outputs/apk/debug/*.apk
+            **/build/outputs/apk/debug/*.apk
