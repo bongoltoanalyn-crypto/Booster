@@ -16,20 +16,18 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Find and Build APK
+      - name: Extract and Build APK
         run: |
-          echo "--- Listing files ---"
+          sudo apt-get update && sudo apt-get install -y p7zip-full
+          echo "--- Before ---"
           ls -la
-          PROJECT_DIR=$(find . -type f -name "settings.gradle*" | head -1 | xargs dirname)
-          if [ -z "$PROJECT_DIR" ]; then
-            PROJECT_DIR=$(find . -type f -name "build.gradle*" | head -1 | xargs dirname)
-          fi
-          if [ -z "$PROJECT_DIR" ]; then
-            PROJECT_DIR="."
-          fi
+          # Hanapin at i-unzip ang .7z file
+          7z x *.7z
+          echo "--- After unzip ---"
+          ls -la
+          PROJECT_DIR=$(find . -maxdepth 3 -type f -name "settings.gradle*" | head -1 | xargs dirname)
           echo "Found project at: $PROJECT_DIR"
-          cd $PROJECT_DIR
-          ls -la
+          cd "$PROJECT_DIR"
           if [ ! -f "./gradlew" ]; then
             gradle wrapper --gradle-version 8.7
           fi
