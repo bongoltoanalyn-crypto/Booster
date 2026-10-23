@@ -13,26 +13,24 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
       - name: Extract and Build APK
         run: |
           sudo apt-get update && sudo apt-get install -y p7zip-full
-          echo "--- Before ---"
+          find . -name "*.7z" -exec 7z x {} \; -o -print
           ls -la
-          # Hanapin at i-unzip ang .7z file
-          7z x *.7z
-          echo "--- After unzip ---"
-          ls -la
-          PROJECT_DIR=$(find . -maxdepth 3 -type f -name "settings.gradle*" | head -1 | xargs dirname)
-          echo "Found project at: $PROJECT_DIR"
+          PROJECT_DIR=$(find . -maxdepth 4 -type f -name "settings.gradle*" | head -1 | xargs dirname)
+          echo "Project at: $PROJECT_DIR"
           cd "$PROJECT_DIR"
-          if [ ! -f "./gradlew" ]; then
-            gradle wrapper --gradle-version 8.7
-          fi
+          # Force Gradle 8.9 - ito yung kailangan ng project mo!
+          gradle wrapper --gradle-version 8.9
           chmod +x ./gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
