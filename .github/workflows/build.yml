@@ -13,29 +13,39 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Extract and Fix Project
+      - name: Extract and FORCE FIX to Java 17
         run: |
           sudo apt-get update && sudo apt-get install -y p7zip-full
-          ls -la
           for f in *.7z; do [ -e "$f" ] && 7z x "$f" -y; done
           PROJECT_DIR=$(find . -maxdepth 4 -name "settings.gradle*" | head -1 | xargs dirname)
           echo "Project: $PROJECT_DIR"
           cd "$PROJECT_DIR"
           echo "sdk.dir=$ANDROID_HOME" > local.properties
-          ls -la
-          echo "--- PATCHING JVM TARGET TO 17 ---"
-          find . -name "*.gradle" -o -name "*.gradle.kts" | xargs ls -la
-          # Patch Java version
-          sed -i "s/VERSION_1_8/VERSION_17/g" app/build.gradle || true
-          sed -i "s/VERSION_11/VERSION_17/g" app/build.gradle || true
-          sed -i "s/VERSION_1_8/VERSION_17/g" build.gradle || true
-          sed -i "s/JavaVersion.VERSION_1_8/JavaVersion.VERSION_17/g" app/build.gradle || true
-          sed -i "s/jvmTarget.*1.8/jvmTarget = '17'/g" app/build.gradle || true
-          sed -i "s/jvmTarget.*11/jvmTarget = '17'/g" app/build.gradle || true
-          sed -i 's/jvmTarget = "1.8"/jvmTarget = "17"/g' app/build.gradle || true
-          sed -i "s/JvmTarget.*1_8/JvmTarget.JVM_17/g" app/build.gradle || true
-          # Show patched file
-          cat app/build.gradle | grep -A 2 -B 2 "jvmTarget\|sourceCompat\|targetCompat\|VERSION" | head -n 100
+          echo "--- BEFORE PATCH ---"
+          cat app/build.gradle | tail -n 100
+          echo "--- FORCE PATCHING ---"
+          # Tanggalin lumang jvmTarget para walang conflict
+          sed -i "/jvmTarget/d" app/build.gradle || true
+          sed -i "/sourceCompatibility/d" app/build.gradle || true
+          sed -i "/targetCompatibility/d" app/build.gradle || true
+          # Idikit sa dulo yung tamang Java 17 config - OOVERRIDE LAHAT
+          cat >> app/build.gradle << 'EOF'
+
+          // --- AUTO-FIXED BY GITHUB ACTIONS TO JAVA 17 ---
+          android {
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          }
+          EOF
+          echo "--- AFTER PATCH ---"
+          cat app/build.gradle | tail -n 50
 
       - name: Build APK
         run: |
